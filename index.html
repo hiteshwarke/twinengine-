@@ -7,29 +7,118 @@
 
 <style>
 body{
-    background:#eee;
-    font-family:Arial;
-    text-align:center;
-    padding:10px;
+    background:#f4f6f8;
+    font-family:Arial, sans-serif;
+    padding:12px;
 }
+
+.app{
+    max-width:440px;
+    margin:auto;
+    background:#fff;
+    border-radius:16px;
+    padding:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+}
+
+h3{
+    margin:0 0 12px;
+    text-align:center;
+}
+
+label{
+    font-size:14px;
+    font-weight:bold;
+}
+
+select{
+    width:100%;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid #ccc;
+    margin-bottom:12px;
+}
+
+.upload-box{
+    border:2px dashed #bbb;
+    border-radius:12px;
+    padding:18px;
+    text-align:center;
+    cursor:pointer;
+    background:#fafafa;
+    margin-bottom:12px;
+}
+
+.upload-box:hover{
+    background:#f1f5f9;
+}
+
+.upload-box input{
+    display:none;
+}
+
 canvas{
     width:100%;
-    max-width:420px;
-    margin:10px auto;
-    display:block;
+    max-width:100%;
+    border-radius:12px;
+    margin-top:12px;
+    background:#eee;
 }
-button,input{margin:8px;}
+
+.actions{
+    display:flex;
+    gap:10px;
+    margin-top:12px;
+}
+
+button{
+    flex:1;
+    padding:10px;
+    border:none;
+    border-radius:10px;
+    font-size:15px;
+    cursor:pointer;
+}
+
+.btn-primary{
+    background:#4caf50;
+    color:#fff;
+}
+
+.btn-secondary{
+    background:#e0e0e0;
+}
 </style>
 </head>
 
 <body>
 
-<h3>Universal Image Processor</h3>
-<input type="file" id="upload" accept="image/*">
-<br>
-<button onclick="downloadImage()">Download</button>
+<div class="app">
+
+<h3>🛍️ Universal Image Processor</h3>
+
+<label>Product Category</label>
+<select>
+  <option>Saree</option>
+  <option>Kurti</option>
+  <option>Dress</option>
+  <option>Kids</option>
+  <option>Home</option>
+</select>
+
+<label class="upload-box">
+  📤 Tap to Upload Image
+  <input type="file" id="upload" accept="image/*">
+</label>
 
 <canvas id="canvas"></canvas>
+
+<div class="actions">
+  <button class="btn-secondary" onclick="document.getElementById('upload').click()">Change Image</button>
+  <button class="btn-primary" onclick="downloadImage()">Download</button>
+</div>
+
+</div>
 
 <script>
 const canvas = document.getElementById("canvas");
@@ -47,15 +136,15 @@ function processImage(img){
     canvas.height=img.height;
     ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
-    lowContrastBlend();        // Rule 1
-    microOcclusionNoise();     // Rule 2
-    textureScramble();         // Rule 3
-    perspectiveWarp();         // Rule 4
-    dissolveShadows();         // Rule 5
-    drawAdaptiveBorder();      // cosmetic
+    lowContrastBlend();        
+    microOcclusionNoise();     
+    textureScramble();         
+    perspectiveWarp();         
+    dissolveShadows();         
+    drawAdaptiveBorder();      
 }
 
-/* ============ RULE 1: EDGE CONFUSION ============ */
+/* ============ RULE 1 ============ */
 function lowContrastBlend(){
     let d=ctx.getImageData(0,0,canvas.width,canvas.height);
     for(let i=0;i<d.data.length;i+=4){
@@ -67,25 +156,20 @@ function lowContrastBlend(){
     ctx.putImageData(d,0,0);
 }
 
-/* ============ RULE 2: CONTINUITY BREAK ============ */
+/* ============ RULE 2 ============ */
 function microOcclusionNoise(){
     ctx.save();
     ctx.globalAlpha=0.08;
     for(let i=0;i<60;i++){
         ctx.fillStyle="rgb(255,255,255)";
         ctx.beginPath();
-        ctx.arc(
-            Math.random()*canvas.width,
-            Math.random()*canvas.height,
-            Math.random()*6+3,
-            0,Math.PI*2
-        );
+        ctx.arc(Math.random()*canvas.width,Math.random()*canvas.height,Math.random()*6+3,0,Math.PI*2);
         ctx.fill();
     }
     ctx.restore();
 }
 
-/* ============ RULE 3: TEXTURE CONFUSION ============ */
+/* ============ RULE 3 ============ */
 function textureScramble(){
     let d=ctx.getImageData(0,0,canvas.width,canvas.height);
     for(let i=0;i<d.data.length;i+=16){
@@ -96,7 +180,7 @@ function textureScramble(){
     ctx.putImageData(d,0,0);
 }
 
-/* ============ RULE 4: PERSPECTIVE DISTORTION ============ */
+/* ============ RULE 4 ============ */
 function perspectiveWarp(){
     ctx.save();
     ctx.translate(canvas.width/2,canvas.height/2);
@@ -106,7 +190,7 @@ function perspectiveWarp(){
     ctx.restore();
 }
 
-/* ============ RULE 5: SHADOW DISSOLVE ============ */
+/* ============ RULE 5 ============ */
 function dissolveShadows(){
     let d=ctx.getImageData(0,0,canvas.width,canvas.height);
     for(let i=0;i<d.data.length;i+=4){
@@ -134,5 +218,6 @@ function downloadImage(){
     a.click();
 }
 </script>
+
 </body>
 </html>
