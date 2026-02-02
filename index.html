@@ -2,122 +2,171 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Meesho Price Estimator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meesho Image Optimizer & Shipping Estimator</title>
+
 <style>
+*{box-sizing:border-box}
 body{
-    background:#f2f2f2;
-    font-family:Arial;
-    text-align:center;
-    padding:10px;
+  margin:0;
+  font-family:system-ui,-apple-system,Arial;
+  background:#f4f6fb;
+}
+.app{
+  max-width:420px;
+  margin:0 auto;
+  padding:12px;
+}
+.card{
+  background:#fff;
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 8px 20px rgba(0,0,0,.08);
+}
+h2{
+  margin:0 0 10px;
+  font-size:18px;
+}
+select,input,button{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-size:14px;
+}
+button{
+  background:#ff3f8f;
+  color:#fff;
+  border:none;
+  font-weight:600;
 }
 canvas{
-    width:100%;
-    max-width:420px;
-    margin:10px auto;
-    display:block;
+  width:100%;
+  display:block;
+  margin-top:12px;
+  border-radius:12px;
+  background:#fff;
 }
-select,input,button{margin:8px;}
+.price-box{
+  margin-top:10px;
+  padding:10px;
+  background:#e9f7ef;
+  border-radius:10px;
+  text-align:center;
+  font-weight:600;
+  color:#137a3a;
+}
+.note{
+  font-size:12px;
+  color:#666;
+  margin-top:6px;
+  text-align:center;
+}
 </style>
 </head>
 
 <body>
+<div class="app">
+  <div class="card">
+    <h2>Meesho Image Optimizer</h2>
 
-<h3>Meesho Image + Price Tool</h3>
+    <select id="category">
+      <option value="">Select Category</option>
+      <option value="saree">Saree</option>
+      <option value="kurti">Kurti</option>
+      <option value="dress">Dress</option>
+      <option value="kids">Kids Wear</option>
+      <option value="home">Home Decor</option>
+    </select>
 
-<input type="file" id="upload" accept="image/*"><br>
+    <input type="file" accept="image/*" id="upload">
+    <button onclick="downloadImage()">Download Image</button>
 
-<select id="category">
-  <option value="saree">Saree</option>
-  <option value="kurti">Kurti / Dress</option>
-  <option value="tshirt">T-Shirt / Shirt</option>
-  <option value="bedsheet">Bedsheet</option>
-  <option value="shoes">Shoes</option>
-  <option value="bag">Bag</option>
-  <option value="elec_small">Electronics (Small)</option>
-  <option value="elec_medium">Electronics (Medium)</option>
-</select>
+    <canvas id="canvas"></canvas>
 
-<br>
-<button onclick="downloadImage()">Download</button>
-
-<canvas id="canvas"></canvas>
+    <div id="price" class="price-box" style="display:none"></div>
+    <div class="note">
+      *Shipping shown is estimated (category based)
+    </div>
+  </div>
+</div>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const priceBox = document.getElementById("price");
 
-const logisticsMatrix = {
+/* Meesho-style fixed logistics matrix (cached) */
+const shippingMatrix = {
   saree: 69,
-  kurti: 69,
-  tshirt: 59,
-  bedsheet: 99,
-  shoes: 109,
-  bag: 109,
-  elec_small: 79,
-  elec_medium: 129
+  kurti: 79,
+  dress: 89,
+  kids: 59,
+  home: 99
 };
 
 document.getElementById("upload").addEventListener("change", e=>{
-  const img=new Image();
-  img.onload=()=>processImage(img);
-  img.src=URL.createObjectURL(e.target.files[0]);
+  const file = e.target.files[0];
+  if(!file) return;
+  const img = new Image();
+  img.onload = ()=>processImage(img);
+  img.src = URL.createObjectURL(file);
+});
+
+document.getElementById("category").addEventListener("change", ()=>{
+  updatePrice();
 });
 
 function processImage(img){
-  canvas.width=img.width;
-  canvas.height=img.height;
+  canvas.width = img.width;
+  canvas.height = img.height;
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(img,0,0);
 
-  softenLighting();       // color safe
-  drawBorder();
-  drawPriceTag();
-}
+  /* Draw image full – NO GAP */
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
-/* ===== COLOR SAFE LIGHT ADJUST ===== */
-function softenLighting(){
-  let d=ctx.getImageData(0,0,canvas.width,canvas.height);
-  for(let i=0;i<d.data.length;i+=4){
-    d.data[i]   = Math.min(255, d.data[i]*1.03);
-    d.data[i+1] = Math.min(255, d.data[i+1]*1.02);
-    d.data[i+2] = Math.min(255, d.data[i+2]*1.01);
+  /* Soft lighting flatten (COLOR SAFE) */
+  const data = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d = data.data;
+  for(let i=0;i<d.length;i+=4){
+    d[i]   = d[i]*0.97 + 6;   // R
+    d[i+1] = d[i+1]*0.97 + 6; // G
+    d[i+2] = d[i+2]*0.97 + 6; // B
   }
-  ctx.putImageData(d,0,0);
-}
+  ctx.putImageData(data,0,0);
 
-/* ===== BORDER ===== */
-function drawBorder(){
-  ctx.strokeStyle="#ff5ca8";
-  ctx.lineWidth=32;
-  ctx.strokeRect(16,16,canvas.width-32,canvas.height-32);
-}
-
-/* ===== PRICE TAG ===== */
-function drawPriceTag(){
-  const cat=document.getElementById("category").value;
-  const price=logisticsMatrix[cat];
-
+  /* Inner border (negative space illusion) */
+  const border = Math.max(canvas.width,canvas.height)*0.04;
   ctx.save();
-  ctx.fillStyle="#00a859";
-  ctx.fillRect(30,canvas.height-90,200,50);
-
-  ctx.fillStyle="#fff";
-  ctx.font="bold 22px Arial";
-  ctx.textAlign="left";
-  ctx.fillText("Shipping ₹"+price,45,canvas.height-55);
+  ctx.strokeStyle = "#ff5ca8";
+  ctx.lineWidth = border;
+  ctx.strokeRect(
+    border/2,
+    border/2,
+    canvas.width-border,
+    canvas.height-border
+  );
   ctx.restore();
+
+  updatePrice();
 }
 
-/* ===== DOWNLOAD ===== */
+function updatePrice(){
+  const cat = document.getElementById("category").value;
+  if(!cat) return;
+  const cost = shippingMatrix[cat];
+  priceBox.style.display="block";
+  priceBox.innerText = `Estimated Meesho Shipping: ₹${cost}`;
+}
+
 function downloadImage(){
-  const a=document.createElement("a");
-  a.href=canvas.toDataURL("image/jpeg",0.95);
-  a.download="meesho-ready.jpg";
+  const a = document.createElement("a");
+  a.download = "meesho-optimized.jpg";
+  a.href = canvas.toDataURL("image/jpeg",0.95);
   a.click();
 }
 </script>
-
 </body>
 </html>
