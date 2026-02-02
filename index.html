@@ -2,146 +2,136 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Meesho Image QC Tool</title>
+<title>Advanced Image Processor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
-  font-family: Arial, sans-serif;
-  background:#f4f6f8;
-  padding:12px;
+    background:#eee;
+    font-family:Arial;
+    text-align:center;
+    padding:10px;
 }
-.container{
-  max-width:420px;
-  margin:auto;
-  background:#fff;
-  border-radius:14px;
-  padding:14px;
-}
-h2{text-align:center;margin-bottom:10px;}
-
-.upload-box{
-  border:2px dashed #bbb;
-  padding:18px;
-  text-align:center;
-  border-radius:10px;
-  background:#fafafa;
-  cursor:pointer;
-}
-.upload-box input{display:none;}
-
-select,button{
-  width:100%;
-  padding:9px;
-  margin-top:10px;
-  border-radius:8px;
-  border:1px solid #ccc;
-}
-
-button{
-  background:#4caf50;
-  color:#fff;
-  border:none;
-}
-
 canvas{
-  width:100%;
-  margin-top:12px;
-  border-radius:10px;
+    width:100%;
+    max-width:420px;
+    margin:10px auto;
+    display:block;
 }
-
-.rules{
-  font-size:13px;
-  margin-top:10px;
-}
-.ok{color:green;}
-.warn{color:#d98200;}
+button,input{margin:8px;}
 </style>
 </head>
 
 <body>
-<div class="container">
 
-<h2>🛍️ Meesho / Amazon Image QC</h2>
-
-<label class="upload-box">
-  📤 Upload Product Image
-  <input type="file" id="upload" accept="image/*">
-</label>
-
-<select id="category">
-  <option value="saree">Saree</option>
-  <option value="kurti">Kurti</option>
-  <option value="dress">Dress</option>
-  <option value="kids">Kids Wear</option>
-  <option value="home">Home Product</option>
-</select>
+<h3>Universal Image Processor</h3>
+<input type="file" id="upload" accept="image/*">
+<br>
+<button onclick="downloadImage()">Download</button>
 
 <canvas id="canvas"></canvas>
 
-<button onclick="download()">Download Image</button>
-
-<div class="rules" id="rules"></div>
-
-</div>
-
 <script>
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-const BORDER_COLORS=[
-"#fdecec","#f3f7e9","#eef6ff","#fff4e6",
-"#f1ecf9","#e9f7f3","#fdf1f6","#f4f8ec",
-"#eef2fb","#f9f6ef"
-];
-
-const SHIPPING={
-  saree:69,
-  kurti:79,
-  dress:89,
-  kids:59,
-  home:99
-};
-
-document.getElementById("upload").addEventListener("change",e=>{
-  const img=new Image();
-  img.onload=()=>draw(img);
-  img.src=URL.createObjectURL(e.target.files[0]);
+document.getElementById("upload").addEventListener("change", e=>{
+    const img=new Image();
+    img.onload=()=>processImage(img);
+    img.src=URL.createObjectURL(e.target.files[0]);
 });
 
-function draw(img){
-  const size=1000;
-  canvas.width=canvas.height=size;
+/* ================= MAIN ================= */
+function processImage(img){
+    canvas.width=img.width;
+    canvas.height=img.height;
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
-  const bg=BORDER_COLORS[Math.floor(Math.random()*BORDER_COLORS.length)];
-  ctx.fillStyle=bg;
-  ctx.fillRect(0,0,size,size);
-
-  const scale=Math.min((size*0.85)/img.width,(size*0.85)/img.height);
-  const w=img.width*scale;
-  const h=img.height*scale;
-
-  ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
-  analyze(img,scale);
+    lowContrastBlend();        // Rule 1
+    microOcclusionNoise();     // Rule 2
+    textureScramble();         // Rule 3
+    perspectiveWarp();         // Rule 4
+    dissolveShadows();         // Rule 5
+    drawAdaptiveBorder();      // cosmetic
 }
 
-function analyze(img,scale){
-  const cat=document.getElementById("category").value;
-  let html="";
-  html+=`<div class="ok">✔ Contrast Safe</div>`;
-  html+=`<div class="ok">✔ Continuity Safe</div>`;
-  html+=img.width<900?`<div class="warn">⚠ Texture: Low resolution</div>`:`<div class="ok">✔ Texture Safe</div>`;
-  html+=`<div class="ok">✔ Perspective Safe</div>`;
-  html+=scale<0.6?`<div class="warn">⚠ Shadow Risk</div>`:`<div class="ok">✔ Shadow: Safe object size</div>`;
-  html+=`<div><b>Estimated Shipping:</b> ₹${SHIPPING[cat]}</div>`;
-  document.getElementById("rules").innerHTML=html;
+/* ============ RULE 1: EDGE CONFUSION ============ */
+function lowContrastBlend(){
+    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
+    for(let i=0;i<d.data.length;i+=4){
+        let avg=(d.data[i]+d.data[i+1]+d.data[i+2])/3;
+        d.data[i]=avg*0.96;
+        d.data[i+1]=avg*0.97;
+        d.data[i+2]=avg*0.98;
+    }
+    ctx.putImageData(d,0,0);
 }
 
-function download(){
-  const a=document.createElement("a");
-  a.download="qc-ready-image.png";
-  a.href=canvas.toDataURL();
-  a.click();
+/* ============ RULE 2: CONTINUITY BREAK ============ */
+function microOcclusionNoise(){
+    ctx.save();
+    ctx.globalAlpha=0.08;
+    for(let i=0;i<60;i++){
+        ctx.fillStyle="rgb(255,255,255)";
+        ctx.beginPath();
+        ctx.arc(
+            Math.random()*canvas.width,
+            Math.random()*canvas.height,
+            Math.random()*6+3,
+            0,Math.PI*2
+        );
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+/* ============ RULE 3: TEXTURE CONFUSION ============ */
+function textureScramble(){
+    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
+    for(let i=0;i<d.data.length;i+=16){
+        d.data[i]+=Math.random()*10-5;
+        d.data[i+1]+=Math.random()*10-5;
+        d.data[i+2]+=Math.random()*10-5;
+    }
+    ctx.putImageData(d,0,0);
+}
+
+/* ============ RULE 4: PERSPECTIVE DISTORTION ============ */
+function perspectiveWarp(){
+    ctx.save();
+    ctx.translate(canvas.width/2,canvas.height/2);
+    ctx.transform(1,Math.random()*0.04,Math.random()*0.04,1,0,0);
+    ctx.translate(-canvas.width/2,-canvas.height/2);
+    ctx.drawImage(canvas,0,0);
+    ctx.restore();
+}
+
+/* ============ RULE 5: SHADOW DISSOLVE ============ */
+function dissolveShadows(){
+    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
+    for(let i=0;i<d.data.length;i+=4){
+        if(d.data[i]<60 && d.data[i+1]<60 && d.data[i+2]<60){
+            d.data[i]+=40;
+            d.data[i+1]+=40;
+            d.data[i+2]+=40;
+        }
+    }
+    ctx.putImageData(d,0,0);
+}
+
+/* ============ BORDER ============ */
+function drawAdaptiveBorder(){
+    ctx.strokeStyle=["#ff5ca8","#ffc94a","#4da6ff"][Math.floor(Math.random()*3)];
+    ctx.lineWidth=32;
+    ctx.strokeRect(16,16,canvas.width-32,canvas.height-32);
+}
+
+/* ============ DOWNLOAD ============ */
+function downloadImage(){
+    const a=document.createElement("a");
+    a.href=canvas.toDataURL("image/jpeg",0.95);
+    a.download="processed.jpg";
+    a.click();
 }
 </script>
 </body>
