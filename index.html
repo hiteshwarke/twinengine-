@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Processor</title>
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+body {
+background: #f2f2f2;
+font-family: Arial, sans-serif;
+padding: 10px;
+text-align: center;
+}
+input, button {
+margin: 8px 0;
+}
+canvas {
+width: 100%;
+max-width: 420px;
+display: block;
+margin: 10px auto;
+background: transparent;
+}
+</style>
+</head>
+<body>
+<h3>Upload Image</h3>
+<input type="file" accept="image/*" id="upload">
+<br>
+<button onclick="downloadImage()">Download</button>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+document.getElementById("upload").addEventListener("change", e => {
+const file = e.target.files[0];
+if (!file) return;
+const img = new Image();
+img.onload = () => processImage(img);
+img.src = URL.createObjectURL(file);
+});
+/* ================= MAIN PROCESS ================= */
+function processImage(img) {
+canvas.width = img.width;
+canvas.height = img.height;
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+// 1️⃣Draw image FULL (NO GAP)
+ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+// 2️⃣Flatten lighting (soft)
+flattenLighting();
+// 3️⃣Random inner border (NO GAP)
+drawInnerBorder();
+// 4️⃣Stickers on top
+drawStickers();
+}
+/* ================= LIGHT FLATTEN ================= */
+function flattenLighting() {
+const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+const d = imgData.data;
+for (let i = 0; i < d.length; i += 4) {
+d[i] += 10;
+d[i + 1] += 10;
+d[i + 2] += 10;
+d[i] *= 0.94;
+d[i + 1] *= 0.94;
+d[i + 2] *= 0.94;
+}
+ctx.putImageData(imgData, 0, 0);
+}
+/* ================= BORDER (ZERO GAP) ================= */
+function drawInnerBorder() {
+const colors = ["#ff5ca8", "#ffc94a", "#c45af0", "#4da6ff"];
+const border = 36;
+ctx.save();
+ctx.strokeStyle = colors[Math.floor(Math.random() * colors.length)];
+ctx.lineWidth = border;
+// EXACT edge-locked border
+ctx.strokeRect(
+border / 2,
+border / 2,
+canvas.width - border,
+canvas.height - border
+);
+ctx.restore();
+}
+/* ================= STICKERS (FRONT) ================= */
+function drawStickers() {
+const texts = ["FREE SHIPPING", "BEST SELLER"];
+texts.forEach((text, i) => {
+const x = canvas.width * (0.35 + i * 0.18);
+const y = canvas.height * (0.55 + Math.random() * 0.1);
+ctx.save();
+ctx.translate(x, y);
+ctx.rotate((Math.random() * 8 - 4) * Math.PI / 180);
+ctx.fillStyle = "#ff6b00";
+ctx.fillRect(-80, -20, 160, 40);
+ctx.fillStyle = "#fff";
+ctx.font = "bold 15px Arial";
+ctx.textAlign = "center";
+ctx.fillText(text, 0, 6);
+ctx.restore();
+});
+}
+/* ================= DOWNLOAD ================= */
+function downloadImage() {
+const a = document.createElement("a");
+a.download = "final-image.jpg";
+a.href = canvas.toDataURL("image/jpeg", 0.95);
+a.click();
+}
+</script>
+</body>
+</html>
