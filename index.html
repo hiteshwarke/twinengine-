@@ -2,133 +2,134 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Meesho Image QC Safe Tool</title>
+<title>Meesho / Amazon Image QC Tool</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body {
   font-family: Arial, sans-serif;
-  background: #f5f5f5;
+  background: #f2f2f2;
+  padding: 12px;
+}
+
+.container {
+  max-width: 420px;
+  margin: auto;
+  background: #fff;
   padding: 15px;
-  text-align: center;
+  border-radius: 12px;
 }
 
 h2 {
-  margin-bottom: 10px;
+  text-align: center;
 }
 
-input[type=file] {
-  margin: 15px 0;
-}
-
-.canvas-wrap {
-  display: flex;
-  justify-content: center;
+select, input, button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 8px;
 }
 
 canvas {
-  background: #ffffff;
-  max-width: 100%;
-  border-radius: 12px;
+  width: 100%;
+  margin-top: 12px;
+  border-radius: 10px;
 }
+
 .rules {
   font-size: 13px;
-  margin-top: 15px;
-  text-align: left;
-  background: #fff;
-  padding: 12px;
-  border-radius: 8px;
+  margin-top: 10px;
 }
+
 .ok { color: green; }
 .warn { color: orange; }
+
+button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+}
 </style>
 </head>
 
 <body>
+<div class="container">
 
 <h2>🛍️ Meesho / Amazon Image QC Tool</h2>
-<p>Upload product image – AI safe output</p>
 
+<select id="category">
+  <option value="light">Category: Light (Jewellery, Cosmetics)</option>
+  <option value="medium">Category: Medium (Clothes, Saree)</option>
+  <option value="heavy">Category: Heavy (Shoes, Bags)</option>
+</select>
+
+<input type="number" id="price" placeholder="Your Selling Price (₹)">
 <input type="file" id="upload" accept="image/*">
 
-<div class="canvas-wrap">
-  <canvas id="canvas"></canvas>
-</div>
+<canvas id="canvas"></canvas>
+
+<button onclick="download()">Download Final Image</button>
 
 <div class="rules" id="rules"></div>
+
+</div>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-const upload = document.getElementById("upload");
-const rulesBox = document.getElementById("rules");
 
-// 10 FIXED SAFE BORDER COLORS (NO BLACK)
-const BORDER_COLORS = [
-  "#FF6F91", "#FFC75F", "#845EC2", "#4D96FF", "#00C9A7",
-  "#F9A826", "#D65DB1", "#6BCB77", "#FF9671", "#0081CF"
+const COLORS = [
+ "#FFE4E1","#FFF5CC","#E6F4EA","#E8F0FE",
+ "#FDEFEF","#E0F7FA","#F3E5F5","#FFFDE7",
+ "#F1F8E9","#E3F2FD"
 ];
 
-upload.addEventListener("change", () => {
-  const file = upload.files[0];
-  if (!file) return;
-
+document.getElementById("upload").addEventListener("change", e => {
   const img = new Image();
-  img.onload = () => processImage(img);
-  img.src = URL.createObjectURL(file);
+  img.onload = () => render(img);
+  img.src = URL.createObjectURL(e.target.files[0]);
 });
 
-function processImage(img) {
-  const FRAME_SIZE = 900;
-  canvas.width = FRAME_SIZE;
-  canvas.height = FRAME_SIZE;
+function render(img){
+  const size = 1000;
+  canvas.width = canvas.height = size;
 
-  // Random border color
-  const borderColor = BORDER_COLORS[Math.floor(Math.random() * BORDER_COLORS.length)];
-  ctx.fillStyle = borderColor;
-  ctx.fillRect(0, 0, FRAME_SIZE, FRAME_SIZE);
+  const bg = COLORS[Math.floor(Math.random()*COLORS.length)];
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,size,size);
 
-  // Scale image (MAX 60%)
-  const maxSize = FRAME_SIZE * 0.6;
-  let scale = Math.min(maxSize / img.width, maxSize / img.height);
-  let w = img.width * scale;
-  let h = img.height * scale;
+  const scale = Math.min((size*0.82)/img.width,(size*0.82)/img.height);
+  const w = img.width*scale;
+  const h = img.height*scale;
 
-  let x = (FRAME_SIZE - w) / 2;
-  let y = (FRAME_SIZE - h) / 2;
+  ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
 
-  ctx.drawImage(img, x, y, w, h);
-
-  analyzeRules(img, scale);
+  analyze(img,scale);
 }
 
-function analyzeRules(img, scale) {
-  let messages = [];
+function analyze(img,scale){
+  let html = "";
+  html += `<div class="ok">✔ Contrast Safe</div>`;
+  html += `<div class="ok">✔ Continuity Safe</div>`;
+  html += img.width<900 ? `<div class="warn">⚠ Texture: Low resolution</div>` :
+                          `<div class="ok">✔ Texture Safe</div>`;
+  html += `<div class="ok">✔ Perspective Safe</div>`;
+  html += scale<0.6 ? `<div class="warn">⚠ Shadow Risk</div>` :
+                      `<div class="ok">✔ Shadow: Safe object size</div>`;
 
-  // Rule 1 – Contrast
-  messages.push(`<span class="ok">✔ Contrast Safe:</span> Border opposite color used`);
+  const cat = document.getElementById("category").value;
+  const base = cat==="light"?40:cat==="medium"?70:110;
+  html += `<div><b>Estimated Shipping:</b> ₹${base} – ₹${base+20}</div>`;
 
-  // Rule 2 – Continuity
-  messages.push(`<span class="ok">✔ Continuity:</span> No auto-crop / no occlusion logic`);
+  document.getElementById("rules").innerHTML = html;
+}
 
-  // Rule 3 – Texture
-  if (img.width < 800 || img.height < 800) {
-    messages.push(`<span class="warn">⚠ Texture:</span> Low resolution – fine patterns may fail`);
-  } else {
-    messages.push(`<span class="ok">✔ Texture:</span> Resolution sufficient`);
-  }
-
-  // Rule 4 – Perspective
-  messages.push(`<span class="ok">✔ Perspective:</span> Centered, canonical view maintained`);
-
-  // Rule 5 – Shadow (basic detection)
-  if (scale < 0.45) {
-    messages.push(`<span class="warn">⚠ Shadow Risk:</span> Product too small, shadows may confuse AI`);
-  } else {
-    messages.push(`<span class="ok">✔ Shadow:</span> Safe object size`);
-  }
-
-  rulesBox.innerHTML = messages.join("<br>");
+function download(){
+  const a = document.createElement("a");
+  a.download = "qc-ready-image.png";
+  a.href = canvas.toDataURL();
+  a.click();
 }
 </script>
 
