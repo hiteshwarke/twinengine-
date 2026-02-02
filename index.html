@@ -2,116 +2,136 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<title>Advanced Image Processor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Image Processor</title>
+
 <style>
-* {
-margin: 0;
-padding: 0;
-box-sizing: border-box;
+body{
+    background:#eee;
+    font-family:Arial;
+    text-align:center;
+    padding:10px;
 }
-body {
-background: #f2f2f2;
-font-family: Arial, sans-serif;
-padding: 10px;
-text-align: center;
+canvas{
+    width:100%;
+    max-width:420px;
+    margin:10px auto;
+    display:block;
 }
-input, button {
-margin: 8px 0;
-}
-canvas {
-width: 100%;
-max-width: 420px;
-display: block;
-margin: 10px auto;
-background: transparent;
-}
+button,input{margin:8px;}
 </style>
 </head>
+
 <body>
-<h3>Upload Image</h3>
-<input type="file" accept="image/*" id="upload">
+
+<h3>Universal Image Processor</h3>
+<input type="file" id="upload" accept="image/*">
 <br>
 <button onclick="downloadImage()">Download</button>
+
 <canvas id="canvas"></canvas>
+
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-document.getElementById("upload").addEventListener("change", e => {
-const file = e.target.files[0];
-if (!file) return;
-const img = new Image();
-img.onload = () => processImage(img);
-img.src = URL.createObjectURL(file);
+
+document.getElementById("upload").addEventListener("change", e=>{
+    const img=new Image();
+    img.onload=()=>processImage(img);
+    img.src=URL.createObjectURL(e.target.files[0]);
 });
-/* ================= MAIN PROCESS ================= */
-function processImage(img) {
-canvas.width = img.width;
-canvas.height = img.height;
-ctx.clearRect(0, 0, canvas.width, canvas.height);
-// 1️⃣Draw image FULL (NO GAP)
-ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-// 2️⃣Flatten lighting (soft)
-flattenLighting();
-// 3️⃣Random inner border (NO GAP)
-drawInnerBorder();
-// 4️⃣Stickers on top
-drawStickers();
+
+/* ================= MAIN ================= */
+function processImage(img){
+    canvas.width=img.width;
+    canvas.height=img.height;
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+
+    lowContrastBlend();        // Rule 1
+    microOcclusionNoise();     // Rule 2
+    textureScramble();         // Rule 3
+    perspectiveWarp();         // Rule 4
+    dissolveShadows();         // Rule 5
+    drawAdaptiveBorder();      // cosmetic
 }
-/* ================= LIGHT FLATTEN ================= */
-function flattenLighting() {
-const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-const d = imgData.data;
-for (let i = 0; i < d.length; i += 4) {
-d[i] += 10;
-d[i + 1] += 10;
-d[i + 2] += 10;
-d[i] *= 0.94;
-d[i + 1] *= 0.94;
-d[i + 2] *= 0.94;
+
+/* ============ RULE 1: EDGE CONFUSION ============ */
+function lowContrastBlend(){
+    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
+    for(let i=0;i<d.data.length;i+=4){
+        let avg=(d.data[i]+d.data[i+1]+d.data[i+2])/3;
+        d.data[i]=avg*0.96;
+        d.data[i+1]=avg*0.97;
+        d.data[i+2]=avg*0.98;
+    }
+    ctx.putImageData(d,0,0);
 }
-ctx.putImageData(imgData, 0, 0);
+
+/* ============ RULE 2: CONTINUITY BREAK ============ */
+function microOcclusionNoise(){
+    ctx.save();
+    ctx.globalAlpha=0.08;
+    for(let i=0;i<60;i++){
+        ctx.fillStyle="rgb(255,255,255)";
+        ctx.beginPath();
+        ctx.arc(
+            Math.random()*canvas.width,
+            Math.random()*canvas.height,
+            Math.random()*6+3,
+            0,Math.PI*2
+        );
+        ctx.fill();
+    }
+    ctx.restore();
 }
-/* ================= BORDER (ZERO GAP) ================= */
-function drawInnerBorder() {
-const colors = ["#ff5ca8", "#ffc94a", "#c45af0", "#4da6ff"];
-const border = 36;
-ctx.save();
-ctx.strokeStyle = colors[Math.floor(Math.random() * colors.length)];
-ctx.lineWidth = border;
-// EXACT edge-locked border
-ctx.strokeRect(
-border / 2,
-border / 2,
-canvas.width - border,
-canvas.height - border
-);
-ctx.restore();
+
+/* ============ RULE 3: TEXTURE CONFUSION ============ */
+function textureScramble(){
+    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
+    for(let i=0;i<d.data.length;i+=16){
+        d.data[i]+=Math.random()*10-5;
+        d.data[i+1]+=Math.random()*10-5;
+        d.data[i+2]+=Math.random()*10-5;
+    }
+    ctx.putImageData(d,0,0);
 }
-/* ================= STICKERS (FRONT) ================= */
-function drawStickers() {
-const texts = ["FREE SHIPPING", "BEST SELLER"];
-texts.forEach((text, i) => {
-const x = canvas.width * (0.35 + i * 0.18);
-const y = canvas.height * (0.55 + Math.random() * 0.1);
-ctx.save();
-ctx.translate(x, y);
-ctx.rotate((Math.random() * 8 - 4) * Math.PI / 180);
-ctx.fillStyle = "#ff6b00";
-ctx.fillRect(-80, -20, 160, 40);
-ctx.fillStyle = "#fff";
-ctx.font = "bold 15px Arial";
-ctx.textAlign = "center";
-ctx.fillText(text, 0, 6);
-ctx.restore();
-});
+
+/* ============ RULE 4: PERSPECTIVE DISTORTION ============ */
+function perspectiveWarp(){
+    ctx.save();
+    ctx.translate(canvas.width/2,canvas.height/2);
+    ctx.transform(1,Math.random()*0.04,Math.random()*0.04,1,0,0);
+    ctx.translate(-canvas.width/2,-canvas.height/2);
+    ctx.drawImage(canvas,0,0);
+    ctx.restore();
 }
-/* ================= DOWNLOAD ================= */
-function downloadImage() {
-const a = document.createElement("a");
-a.download = "final-image.jpg";
-a.href = canvas.toDataURL("image/jpeg", 0.95);
-a.click();
+
+/* ============ RULE 5: SHADOW DISSOLVE ============ */
+function dissolveShadows(){
+    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
+    for(let i=0;i<d.data.length;i+=4){
+        if(d.data[i]<60 && d.data[i+1]<60 && d.data[i+2]<60){
+            d.data[i]+=40;
+            d.data[i+1]+=40;
+            d.data[i+2]+=40;
+        }
+    }
+    ctx.putImageData(d,0,0);
+}
+
+/* ============ BORDER ============ */
+function drawAdaptiveBorder(){
+    ctx.strokeStyle=["#ff5ca8","#ffc94a","#4da6ff"][Math.floor(Math.random()*3)];
+    ctx.lineWidth=32;
+    ctx.strokeRect(16,16,canvas.width-32,canvas.height-32);
+}
+
+/* ============ DOWNLOAD ============ */
+function downloadImage(){
+    const a=document.createElement("a");
+    a.href=canvas.toDataURL("image/jpeg",0.95);
+    a.download="processed.jpg";
+    a.click();
 }
 </script>
 </body>
