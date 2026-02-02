@@ -2,12 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Advanced Image Processor</title>
+<title>Meesho Price Estimator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 body{
-    background:#eee;
+    background:#f2f2f2;
     font-family:Arial;
     text-align:center;
     padding:10px;
@@ -18,14 +17,27 @@ canvas{
     margin:10px auto;
     display:block;
 }
-button,input{margin:8px;}
+select,input,button{margin:8px;}
 </style>
 </head>
 
 <body>
 
-<h3>Universal Image Processor</h3>
-<input type="file" id="upload" accept="image/*">
+<h3>Meesho Image + Price Tool</h3>
+
+<input type="file" id="upload" accept="image/*"><br>
+
+<select id="category">
+  <option value="saree">Saree</option>
+  <option value="kurti">Kurti / Dress</option>
+  <option value="tshirt">T-Shirt / Shirt</option>
+  <option value="bedsheet">Bedsheet</option>
+  <option value="shoes">Shoes</option>
+  <option value="bag">Bag</option>
+  <option value="elec_small">Electronics (Small)</option>
+  <option value="elec_medium">Electronics (Medium)</option>
+</select>
+
 <br>
 <button onclick="downloadImage()">Download</button>
 
@@ -35,104 +47,77 @@ button,input{margin:8px;}
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+const logisticsMatrix = {
+  saree: 69,
+  kurti: 69,
+  tshirt: 59,
+  bedsheet: 99,
+  shoes: 109,
+  bag: 109,
+  elec_small: 79,
+  elec_medium: 129
+};
+
 document.getElementById("upload").addEventListener("change", e=>{
-    const img=new Image();
-    img.onload=()=>processImage(img);
-    img.src=URL.createObjectURL(e.target.files[0]);
+  const img=new Image();
+  img.onload=()=>processImage(img);
+  img.src=URL.createObjectURL(e.target.files[0]);
 });
 
-/* ================= MAIN ================= */
 function processImage(img){
-    canvas.width=img.width;
-    canvas.height=img.height;
-    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  canvas.width=img.width;
+  canvas.height=img.height;
 
-    lowContrastBlend();        // Rule 1
-    microOcclusionNoise();     // Rule 2
-    textureScramble();         // Rule 3
-    perspectiveWarp();         // Rule 4
-    dissolveShadows();         // Rule 5
-    drawAdaptiveBorder();      // cosmetic
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0);
+
+  softenLighting();       // color safe
+  drawBorder();
+  drawPriceTag();
 }
 
-/* ============ RULE 1: EDGE CONFUSION ============ */
-function lowContrastBlend(){
-    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
-    for(let i=0;i<d.data.length;i+=4){
-        let avg=(d.data[i]+d.data[i+1]+d.data[i+2])/3;
-        d.data[i]=avg*0.96;
-        d.data[i+1]=avg*0.97;
-        d.data[i+2]=avg*0.98;
-    }
-    ctx.putImageData(d,0,0);
+/* ===== COLOR SAFE LIGHT ADJUST ===== */
+function softenLighting(){
+  let d=ctx.getImageData(0,0,canvas.width,canvas.height);
+  for(let i=0;i<d.data.length;i+=4){
+    d.data[i]   = Math.min(255, d.data[i]*1.03);
+    d.data[i+1] = Math.min(255, d.data[i+1]*1.02);
+    d.data[i+2] = Math.min(255, d.data[i+2]*1.01);
+  }
+  ctx.putImageData(d,0,0);
 }
 
-/* ============ RULE 2: CONTINUITY BREAK ============ */
-function microOcclusionNoise(){
-    ctx.save();
-    ctx.globalAlpha=0.08;
-    for(let i=0;i<60;i++){
-        ctx.fillStyle="rgb(255,255,255)";
-        ctx.beginPath();
-        ctx.arc(
-            Math.random()*canvas.width,
-            Math.random()*canvas.height,
-            Math.random()*6+3,
-            0,Math.PI*2
-        );
-        ctx.fill();
-    }
-    ctx.restore();
+/* ===== BORDER ===== */
+function drawBorder(){
+  ctx.strokeStyle="#ff5ca8";
+  ctx.lineWidth=32;
+  ctx.strokeRect(16,16,canvas.width-32,canvas.height-32);
 }
 
-/* ============ RULE 3: TEXTURE CONFUSION ============ */
-function textureScramble(){
-    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
-    for(let i=0;i<d.data.length;i+=16){
-        d.data[i]+=Math.random()*10-5;
-        d.data[i+1]+=Math.random()*10-5;
-        d.data[i+2]+=Math.random()*10-5;
-    }
-    ctx.putImageData(d,0,0);
+/* ===== PRICE TAG ===== */
+function drawPriceTag(){
+  const cat=document.getElementById("category").value;
+  const price=logisticsMatrix[cat];
+
+  ctx.save();
+  ctx.fillStyle="#00a859";
+  ctx.fillRect(30,canvas.height-90,200,50);
+
+  ctx.fillStyle="#fff";
+  ctx.font="bold 22px Arial";
+  ctx.textAlign="left";
+  ctx.fillText("Shipping ₹"+price,45,canvas.height-55);
+  ctx.restore();
 }
 
-/* ============ RULE 4: PERSPECTIVE DISTORTION ============ */
-function perspectiveWarp(){
-    ctx.save();
-    ctx.translate(canvas.width/2,canvas.height/2);
-    ctx.transform(1,Math.random()*0.04,Math.random()*0.04,1,0,0);
-    ctx.translate(-canvas.width/2,-canvas.height/2);
-    ctx.drawImage(canvas,0,0);
-    ctx.restore();
-}
-
-/* ============ RULE 5: SHADOW DISSOLVE ============ */
-function dissolveShadows(){
-    let d=ctx.getImageData(0,0,canvas.width,canvas.height);
-    for(let i=0;i<d.data.length;i+=4){
-        if(d.data[i]<60 && d.data[i+1]<60 && d.data[i+2]<60){
-            d.data[i]+=40;
-            d.data[i+1]+=40;
-            d.data[i+2]+=40;
-        }
-    }
-    ctx.putImageData(d,0,0);
-}
-
-/* ============ BORDER ============ */
-function drawAdaptiveBorder(){
-    ctx.strokeStyle=["#ff5ca8","#ffc94a","#4da6ff"][Math.floor(Math.random()*3)];
-    ctx.lineWidth=32;
-    ctx.strokeRect(16,16,canvas.width-32,canvas.height-32);
-}
-
-/* ============ DOWNLOAD ============ */
+/* ===== DOWNLOAD ===== */
 function downloadImage(){
-    const a=document.createElement("a");
-    a.href=canvas.toDataURL("image/jpeg",0.95);
-    a.download="processed.jpg";
-    a.click();
+  const a=document.createElement("a");
+  a.href=canvas.toDataURL("image/jpeg",0.95);
+  a.download="meesho-ready.jpg";
+  a.click();
 }
 </script>
+
 </body>
 </html>
