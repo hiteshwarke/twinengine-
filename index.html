@@ -2,136 +2,147 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Meesho / Amazon Image QC Tool</title>
+<title>Meesho Image QC Tool</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body {
+body{
   font-family: Arial, sans-serif;
-  background: #f2f2f2;
-  padding: 12px;
+  background:#f4f6f8;
+  padding:12px;
+}
+.container{
+  max-width:420px;
+  margin:auto;
+  background:#fff;
+  border-radius:14px;
+  padding:14px;
+}
+h2{text-align:center;margin-bottom:10px;}
+
+.upload-box{
+  border:2px dashed #bbb;
+  padding:18px;
+  text-align:center;
+  border-radius:10px;
+  background:#fafafa;
+  cursor:pointer;
+}
+.upload-box input{display:none;}
+
+select,button{
+  width:100%;
+  padding:9px;
+  margin-top:10px;
+  border-radius:8px;
+  border:1px solid #ccc;
 }
 
-.container {
-  max-width: 420px;
-  margin: auto;
-  background: #fff;
-  padding: 15px;
-  border-radius: 12px;
+button{
+  background:#4caf50;
+  color:#fff;
+  border:none;
 }
 
-h2 {
-  text-align: center;
+canvas{
+  width:100%;
+  margin-top:12px;
+  border-radius:10px;
 }
 
-select, input, button {
-  width: 100%;
-  padding: 8px;
-  margin-top: 8px;
+.rules{
+  font-size:13px;
+  margin-top:10px;
 }
-
-canvas {
-  width: 100%;
-  margin-top: 12px;
-  border-radius: 10px;
-}
-
-.rules {
-  font-size: 13px;
-  margin-top: 10px;
-}
-
-.ok { color: green; }
-.warn { color: orange; }
-
-button {
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 6px;
-}
+.ok{color:green;}
+.warn{color:#d98200;}
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<h2>🛍️ Meesho / Amazon Image QC Tool</h2>
+<h2>🛍️ Meesho / Amazon Image QC</h2>
+
+<label class="upload-box">
+  📤 Upload Product Image
+  <input type="file" id="upload" accept="image/*">
+</label>
 
 <select id="category">
-  <option value="light">Category: Light (Jewellery, Cosmetics)</option>
-  <option value="medium">Category: Medium (Clothes, Saree)</option>
-  <option value="heavy">Category: Heavy (Shoes, Bags)</option>
+  <option value="saree">Saree</option>
+  <option value="kurti">Kurti</option>
+  <option value="dress">Dress</option>
+  <option value="kids">Kids Wear</option>
+  <option value="home">Home Product</option>
 </select>
-
-<input type="number" id="price" placeholder="Your Selling Price (₹)">
-<input type="file" id="upload" accept="image/*">
 
 <canvas id="canvas"></canvas>
 
-<button onclick="download()">Download Final Image</button>
+<button onclick="download()">Download Image</button>
 
 <div class="rules" id="rules"></div>
 
 </div>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
 
-const COLORS = [
- "#FFE4E1","#FFF5CC","#E6F4EA","#E8F0FE",
- "#FDEFEF","#E0F7FA","#F3E5F5","#FFFDE7",
- "#F1F8E9","#E3F2FD"
+const BORDER_COLORS=[
+"#fdecec","#f3f7e9","#eef6ff","#fff4e6",
+"#f1ecf9","#e9f7f3","#fdf1f6","#f4f8ec",
+"#eef2fb","#f9f6ef"
 ];
 
-document.getElementById("upload").addEventListener("change", e => {
-  const img = new Image();
-  img.onload = () => render(img);
-  img.src = URL.createObjectURL(e.target.files[0]);
+const SHIPPING={
+  saree:69,
+  kurti:79,
+  dress:89,
+  kids:59,
+  home:99
+};
+
+document.getElementById("upload").addEventListener("change",e=>{
+  const img=new Image();
+  img.onload=()=>draw(img);
+  img.src=URL.createObjectURL(e.target.files[0]);
 });
 
-function render(img){
-  const size = 1000;
-  canvas.width = canvas.height = size;
+function draw(img){
+  const size=1000;
+  canvas.width=canvas.height=size;
 
-  const bg = COLORS[Math.floor(Math.random()*COLORS.length)];
-  ctx.fillStyle = bg;
+  const bg=BORDER_COLORS[Math.floor(Math.random()*BORDER_COLORS.length)];
+  ctx.fillStyle=bg;
   ctx.fillRect(0,0,size,size);
 
-  const scale = Math.min((size*0.82)/img.width,(size*0.82)/img.height);
-  const w = img.width*scale;
-  const h = img.height*scale;
+  const scale=Math.min((size*0.85)/img.width,(size*0.85)/img.height);
+  const w=img.width*scale;
+  const h=img.height*scale;
 
   ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
-
   analyze(img,scale);
 }
 
 function analyze(img,scale){
-  let html = "";
-  html += `<div class="ok">✔ Contrast Safe</div>`;
-  html += `<div class="ok">✔ Continuity Safe</div>`;
-  html += img.width<900 ? `<div class="warn">⚠ Texture: Low resolution</div>` :
-                          `<div class="ok">✔ Texture Safe</div>`;
-  html += `<div class="ok">✔ Perspective Safe</div>`;
-  html += scale<0.6 ? `<div class="warn">⚠ Shadow Risk</div>` :
-                      `<div class="ok">✔ Shadow: Safe object size</div>`;
-
-  const cat = document.getElementById("category").value;
-  const base = cat==="light"?40:cat==="medium"?70:110;
-  html += `<div><b>Estimated Shipping:</b> ₹${base} – ₹${base+20}</div>`;
-
-  document.getElementById("rules").innerHTML = html;
+  const cat=document.getElementById("category").value;
+  let html="";
+  html+=`<div class="ok">✔ Contrast Safe</div>`;
+  html+=`<div class="ok">✔ Continuity Safe</div>`;
+  html+=img.width<900?`<div class="warn">⚠ Texture: Low resolution</div>`:`<div class="ok">✔ Texture Safe</div>`;
+  html+=`<div class="ok">✔ Perspective Safe</div>`;
+  html+=scale<0.6?`<div class="warn">⚠ Shadow Risk</div>`:`<div class="ok">✔ Shadow: Safe object size</div>`;
+  html+=`<div><b>Estimated Shipping:</b> ₹${SHIPPING[cat]}</div>`;
+  document.getElementById("rules").innerHTML=html;
 }
 
 function download(){
-  const a = document.createElement("a");
-  a.download = "qc-ready-image.png";
-  a.href = canvas.toDataURL();
+  const a=document.createElement("a");
+  a.download="qc-ready-image.png";
+  a.href=canvas.toDataURL();
   a.click();
 }
 </script>
-
 </body>
 </html>
