@@ -11,7 +11,6 @@ body{
     font-family:Arial, sans-serif;
     padding:12px;
 }
-
 .app{
     max-width:440px;
     margin:auto;
@@ -20,17 +19,14 @@ body{
     padding:16px;
     box-shadow:0 10px 30px rgba(0,0,0,0.08);
 }
-
 h3{
     margin:0 0 12px;
     text-align:center;
 }
-
 label{
     font-size:14px;
     font-weight:bold;
 }
-
 select{
     width:100%;
     padding:10px;
@@ -38,7 +34,6 @@ select{
     border:1px solid #ccc;
     margin-bottom:12px;
 }
-
 .upload-box{
     border:2px dashed #bbb;
     border-radius:12px;
@@ -48,29 +43,21 @@ select{
     background:#fafafa;
     margin-bottom:12px;
 }
-
 .upload-box:hover{
     background:#f1f5f9;
 }
-
-.upload-box input{
-    display:none;
-}
-
+.upload-box input{ display:none; }
 canvas{
     width:100%;
-    max-width:100%;
     border-radius:12px;
     margin-top:12px;
     background:#eee;
 }
-
 .actions{
     display:flex;
     gap:10px;
     margin-top:12px;
 }
-
 button{
     flex:1;
     padding:10px;
@@ -79,20 +66,12 @@ button{
     font-size:15px;
     cursor:pointer;
 }
-
-.btn-primary{
-    background:#4caf50;
-    color:#fff;
-}
-
-.btn-secondary{
-    background:#e0e0e0;
-}
+.btn-primary{ background:#4caf50;color:#fff; }
+.btn-secondary{ background:#e0e0e0; }
 </style>
 </head>
 
 <body>
-
 <div class="app">
 
 <h3>🛍️ Universal Image Processor</h3>
@@ -144,14 +123,13 @@ function processImage(img){
     drawAdaptiveBorder();      
 }
 
-/* ============ RULE 1 ============ */
+/* ============ RULE 1 (FIXED COLOR ISSUE) ============ */
 function lowContrastBlend(){
     let d=ctx.getImageData(0,0,canvas.width,canvas.height);
     for(let i=0;i<d.data.length;i+=4){
-        let avg=(d.data[i]+d.data[i+1]+d.data[i+2])/3;
-        d.data[i]=avg*0.96;
-        d.data[i+1]=avg*0.97;
-        d.data[i+2]=avg*0.98;
+        d.data[i]   = d.data[i]   * 0.97; // R
+        d.data[i+1] = d.data[i+1] * 0.97; // G
+        d.data[i+2] = d.data[i+2] * 0.97; // B
     }
     ctx.putImageData(d,0,0);
 }
@@ -203,9 +181,14 @@ function dissolveShadows(){
     ctx.putImageData(d,0,0);
 }
 
-/* ============ BORDER ============ */
+/* ============ BORDER (DARK RANDOM COLORS) ============ */
 function drawAdaptiveBorder(){
-    ctx.strokeStyle=["#ff5ca8","#ffc94a","#4da6ff"][Math.floor(Math.random()*3)];
+    const darkColors = [
+        "#2c2c54","#1e272e","#3d3d3d","#4b2c20",
+        "#1b1464","#2f3640","#4a235a","#2c3e50",
+        "#512e5f"
+    ];
+    ctx.strokeStyle = darkColors[Math.floor(Math.random()*darkColors.length)];
     ctx.lineWidth=32;
     ctx.strokeRect(16,16,canvas.width-32,canvas.height-32);
 }
@@ -218,6 +201,5 @@ function downloadImage(){
     a.click();
 }
 </script>
-
 </body>
 </html>
